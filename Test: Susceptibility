@@ -43,10 +43,10 @@ numstep=0.1 #Step size for increase in quantity
 numnum=numincrease/numstep #Number of increases
 proportiondeviation=0.2 #Standard deviation as a proportion of quantity
 
-print 'Starting Value:',propinfi
-starter=propinfi
+print 'Starting Value:',meansusceptibility
+starter=meansusceptibility
 print 'End Value:',propinfi+numincrease
-ender=propinfi+numincrease
+ender=meansusceptibility+numincrease
 print 'Total No. Runs:',runno*numnum
 
 nodeadarray=np.zeros(numnum*runno).reshape(numnum,runno)
@@ -420,21 +420,21 @@ while i<numnum:
 
 avgdead=plt.figure()
 plt.plot(plotting,avgpercentdead)
-plt.xlabel('Initial Proportion Infected')
+plt.xlabel('Mean Susceptibility')
 plt.ylabel('Total Percent Dead (Average)')
 plt.savefig("avgnodead.jpg", dpi=200)
 plt.show()
 
 avgtotalinf=plt.figure()
 plt.plot(plotting,avgpercentinf)
-plt.xlabel('Initial Proportion Infected')
+plt.xlabel('Mean Susceptibility')
 plt.ylabel('Total Percent Infected (Average)')
 plt.savefig("avgtotalinf.jpg",dpi=200)
 plt.show()
 
 avgpeakinf=plt.figure()
 plt.plot(plotting,avgpercentpeakinf)
-plt.xlabel('Initial Proportion Infected')
+plt.xlabel('Mean Susceptibility')
 plt.ylabel('Percent Peak Infection (Average)')
 plt.savefig("avgpeakinf.jpg",dpi=200)
 plt.show()
