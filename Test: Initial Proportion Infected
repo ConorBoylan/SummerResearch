@@ -394,7 +394,7 @@ while i<numnum:
     averagenodead[i]=np.average(nodeadarray[i])
     averagetotalnoinf[i]=np.average(totalnoinfarray[i])
     averagepeakinfection[i]=np.average(peakinfectionarray[i])
-    averagenoexposed[i]=np.average(totalnoexposed[i])
+    averagenoexposed[i]=np.average(totalnoexposedarray[i])
     i=i+1
 
 ##Plotting
