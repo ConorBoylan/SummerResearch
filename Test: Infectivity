@@ -52,6 +52,7 @@ print 'Total No. Runs:',runno*numnum
 nodeadarray=np.zeros(numnum*runno).reshape(numnum,runno)
 totalnoinfarray=np.zeros(numnum*runno).reshape(numnum,runno)
 peakinfectionarray=np.zeros(numnum*runno).reshape(numnum,runno)
+totalnoexposedarray=np.zeros(numnum*runno).reshape(numnum,runno)
 
 s=0
 while s<numnum:
@@ -375,6 +376,7 @@ while s<numnum:
         
         nodeadarray[s,r]=max(nodead)
         totalnoinfarray[s,r]=totalnoinf
+        totalnoexposedarray[s,r]=totalnoexposed
         peakinfectionarray[s,r]=max(noinf)
         
         r=r+1
@@ -385,11 +387,13 @@ while s<numnum:
 averagenodead=np.zeros(numnum)
 averagetotalnoinf=np.zeros(numnum)
 averagepeakinfection=np.zeros(numnum)
+averagenoexposed=np.zeros(numnum)
 i=0
 while i<numnum:
     averagenodead[i]=np.average(nodeadarray[i])
     averagetotalnoinf[i]=np.average(totalnoinfarray[i])
     averagepeakinfection[i]=np.average(peakinfectionarray[i])
+    averagenoexposed[i]=np.average(totalnoexposed[i])
     i=i+1
 
 ##Plotting (single run)
@@ -407,6 +411,7 @@ runtime=end_time-start_time
 print 'Runtime:',runtime
 
 avgpercentdead=(averagenodead/number)*100
+avgpercentexposed=(averagenoexposed/number)*100
 avgpercentinf=(averagetotalnoinf/number)*100
 avgpercentpeakinf=(averagepeakinfection/number)*100
 
@@ -417,6 +422,13 @@ i=0
 while i<numnum:
     plotting[i]=starter+i*numstep
     i=i+1
+
+avgexposed=plt.figure()
+plt.plot(plotting,avgpercentexposed)
+plt.xlabel('Mean Infectivity')
+plt.ylabel('Total Percent Exposed (Average)')
+plt.savefig("avgnoexposed.jpg", dpi=200)
+plt.show()
 
 avgdead=plt.figure()
 plt.plot(plotting,avgpercentdead)
