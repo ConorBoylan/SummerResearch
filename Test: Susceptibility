@@ -45,7 +45,7 @@ proportiondeviation=0.2 #Standard deviation as a proportion of quantity
 
 print 'Starting Value:',meansusceptibility
 starter=meansusceptibility
-print 'End Value:',propinfi+numincrease
+print 'End Value:',meansusceptibility+numincrease
 ender=meansusceptibility+numincrease
 print 'Total No. Runs:',runno*numnum
 
