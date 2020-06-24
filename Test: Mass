@@ -38,8 +38,8 @@ width=(maximum-minimum)/cellsize
 nobuckets=width**2
 
 runno=10 #Number of simulation runs for each number of particles
-numincrease=0.5 #Maximum increase in chosen quantity from initial value
-numstep=0.1 #Step size for increase in quantity
+numincrease=200 #Maximum increase in chosen quantity from initial value
+numstep=20 #Step size for increase in quantity
 numnum=numincrease/numstep #Number of increases
 proportiondeviation=0.25 #Standard deviation as a proportion of quantity
 
