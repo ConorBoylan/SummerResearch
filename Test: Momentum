@@ -43,10 +43,10 @@ numstep=120 #Step size for increase in quantity
 numnum=numincrease/numstep #Number of increases
 proportiondeviation=(1/13) #Standard deviation as a proportion of quantity
 
-print 'Starting Value:',meanmass
-starter=meanmass
-print 'End Value:',meanmass+numincrease
-ender=meanmass+numincrease
+print 'Starting Value:',meanmomentum
+starter=meanmomentum
+print 'End Value:',meanmomentum+numincrease
+ender=meanmomentum+numincrease
 print 'Total No. Runs:',runno*numnum
 
 nodeadarray=np.zeros(numnum*runno).reshape(numnum,runno)
@@ -383,8 +383,8 @@ while s<numnum:
         peakinfectionarray[s,r]=max(noinf)
         
         r=r+1
-    meanmass=meanmass+numstep
-    mortalitydeviation=meanmass*proportiondeviation
+    meanmomentum=meanmomentum+numstep
+    momentumdeviation=meanmomentum*proportiondeviation
     s=s+1
 
 averagenodead=np.zeros(numnum)
