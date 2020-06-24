@@ -384,7 +384,7 @@ while s<numnum:
         
         r=r+1
     meanmass=meanmass+numstep
-    mortalitydeviation=meanmass*proportiondeviation
+    massdeviation=meanmass*proportiondeviation
     s=s+1
 
 averagenodead=np.zeros(numnum)
