@@ -359,10 +359,13 @@ while s<numnum:
         nosusceptible=number-noinf-norecov-nodead #Number of particles susceptible to infection (includes exposed particles)
         
         totalnoinf=0
+        totalnoexposed=0
         i=0
         while i<number:
             if np.count_nonzero(inf[i])>0:
                 totalnoinf=totalnoinf+1
+            if np.count_nonzero(exposure[i])>0:
+                totalnoexposed=totalnoexposed+1
             i=i+1
         
         #Printing stats (optional)
