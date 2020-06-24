@@ -1,0 +1,453 @@
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+import datetime
+
+#Test: Particle size
+
+start_time=datetime.datetime.now()
+number=150 #Number of particles
+propinfi=0.05 #Initial proportion of particles infected
+particlesize=0.01 #Particle size
+meansusceptibility=0.5 #Mean particle susceptibility
+susceptibilitydeviation=0.1 #Particle susceptibility standard deviation 
+meaninfectivity=0.5 #Mean particle infectivity 
+infectivitydeviation=0.1 #Particle infectivity standard deviation 
+meanmortality=0.1 #Mean particle mortality rate
+mortalitydeviation=0.01 #Particle mortality rate standard deviation
+boxlength=7.5 #Dimensions of constraining box
+meanmomentum=650 #Mean initial momentum (overall magnitude)
+momentumdeviation=50 #Momentum standard deviation
+meanmass=60 #Mean mass
+massdeviation=15 #Mass standard deviation
+meanrecov=100 #Mean number of time increments taken to recover
+recovdeviation=25 #Standard deviation in number of time increments taken to recover
+start=0 #Start time (kind of redundant)
+end=6 #End time
+division=0.01 #Time division
+time=np.arange(start,end,division) #Used for graphing
+simno=int((end-start)/division) #Number of time increments
+density=number/((2*boxlength)**2) #Particle density (for comparison's sake)
+propcovered=(number*math.pi*particlesize**2)/((2*boxlength)**2)
+
+#Spatial hashing
+minimum=-boxlength
+maximum=boxlength
+cellsize=1
+width=(maximum-minimum)/cellsize
+nobuckets=width**2
+
+runno=5 #Number of simulation runs for each number of particles
+numincrease=0.5 #Maximum increase in chosen quantity from initial value
+numstep=0.05 #Step size for increase in quantity
+numnum=numincrease/numstep #Number of increases
+
+print 'Starting Value:',particlesize
+starter=particlesize
+print 'End Value:',particlesize+numincrease
+ender=particlesize+numincrease
+print 'Total No. Runs:',runno*numnum
+
+nodeadarray=np.zeros(numnum*runno).reshape(numnum,runno)
+totalnoinfarray=np.zeros(numnum*runno).reshape(numnum,runno)
+peakinfectionarray=np.zeros(numnum*runno).reshape(numnum,runno)
+totalnoexposedarray=np.zeros(numnum*runno).reshape(numnum,runno)
+
+s=0
+while s<numnum:
+    r=0
+    while r<runno:
+        #Creating randomly positive and negative arrays (to sign quantities)
+        posnegrand=np.random.rand(number)
+        posnegrand2=np.random.rand(number)
+        posneg=np.zeros(number)
+        posneg2=np.zeros(number)
+        i=0
+        while i<number:
+            if posnegrand[i]>=0.5:
+                posneg[i]=1
+            else:
+                posneg[i]=-1
+            if posnegrand2[i]>=0.5:
+                posneg2[i]=1
+            else:
+                posneg2[i]=-1
+            i=i+1
+        
+        mass=np.zeros(number) #Array of particle masses
+        i=0
+        while i<number:
+            mass[i]=np.random.normal(meanmass,massdeviation)
+            i=i+1
+        
+        recovtime=np.zeros(number) #Array of the recovery times for each particle
+        i=0
+        while i<number:
+            recovtime[i]=int(np.random.normal(meanrecov,recovdeviation))
+            i=i+1
+        
+        mortality=np.zeros(number) #Array of each particles' mortalities
+        i=0
+        while i<number:
+            mortality[i]=np.random.normal(meanmortality,mortalitydeviation)
+            i=i+1
+        
+        susceptibility=np.zeros(number) #Array of particles' susceptibilities to infection
+        i=0
+        while i<number:
+            susceptibility[i]=np.random.normal(meansusceptibility,susceptibilitydeviation)
+            i=i+1
+        
+        infectivity=np.zeros(number) #Array of particles' infectivities
+        i=0
+        while i<number:
+            infectivity[i]=np.random.normal(meaninfectivity,infectivitydeviation)
+            i=i+1
+        
+        norecov=np.zeros(simno) #Number of recovered particles at each time increment
+        nodead=np.zeros(simno) #Number of dead particles at each time increment
+        deadcheck=np.zeros(number*simno).reshape(number,simno) #Array to check whether a particle is dead (so as not to perform calculations on it)
+        
+        #QUARANTINE (NOT IMPLEMENTED)
+        noquarantined=np.zeros(simno) #Number of particles in quarantine
+        quarantinecheck=np.zeros(number*simno).reshape(number,simno) #Array to check whether a particle is in quarantine (so as not to perform calculations on it)
+        
+        x=np.zeros(number*simno).reshape(number,simno) #Array of all x values
+        y=np.zeros(number*simno).reshape(number,simno) #Array of all y values
+        xi=np.random.rand(number)*(boxlength-particlesize) #Array of initial x values (unsigned)
+        yi=np.random.rand(number)*(boxlength-particlesize) #Array of initial y values (unsigned)
+        
+        #Inputting initial x and y values
+        i=0
+        while i<number:
+            x[i,0]=xi[i]*posneg[i]
+            y[i,0]=yi[i]*posneg2[i]
+            i=i+1
+        
+        vx=np.zeros(number*simno).reshape(number,simno) #Array of all x velocities
+        vy=np.zeros(number*simno).reshape(number,simno) #Array of all y velocities
+        
+        speed=np.zeros(number) #Array of particles' intitial speeds
+        angles=np.random.random(number)*math.pi*2 #Array of particles' initial angles of projection
+        
+        #Creating and inputting initial x and y velocities
+        i=0
+        while i<number:
+            speed[i]=(np.random.normal(meanmomentum,momentumdeviation))/mass[i]
+            vx[i,0]=speed[i]*math.cos(angles[i])
+            vy[i,0]=speed[i]*math.sin(angles[i])
+            i=i+1
+        
+        inf=np.zeros(number*simno).reshape(number,simno) #Array denoting which particles are infected
+        
+        def infpersist(i,j): #Function that makes infection persist and then be removed (either by recovery or death)
+            #Persistence
+            d=0
+            while d<recovtime[i] and (j+d)!=simno:
+                inf[i,j+d]=1.0
+                d=d+1
+            susceptibility[i]=0
+            norecov[j+d:]=norecov[j+d:]+1
+            #Mortality
+            if np.random.random(1)<mortality[i]:
+                nodead[j+d:]=nodead[j+d:]+1
+                deadcheck[i,j+d:]=1.0
+                #Moves particles out of bounds and zeros their velocities
+                x[i,j+d:]=boxlength+3*particlesize
+                y[i,j+d:]=boxlength+3*particlesize
+                vx[i,j+d:]=0
+                vy[i,j+d:]=0
+        
+        #Filling in initial infected particles
+        i=0
+        while i<number:
+            if posnegrand[i]<=propinfi:
+                inf[i,0]=1
+                infpersist(i,0)
+            else:
+                inf[i,0]=0
+            i=i+1
+        
+        mass=np.zeros(number) #Array of particle masses
+        i=0
+        while i<number:
+            mass[i]=np.random.normal(meanmass,massdeviation)
+            i=i+1
+        
+        mindist=boxlength-particlesize
+        
+        def dist(a,b,c): #Function that evaluates the distance between two particles
+            return np.sqrt((x[a,c]-x[b,c])**2+(y[a,c]-y[b,c])**2)
+        
+        def rot(vx,vy,h,j,theta): #Function that rotates vector, given orthogonal components (returns x',y' components)
+            return vx[h,j]*math.cos(theta)-vy[h,j]*math.sin(theta), vx[h,j]*math.sin(theta)+vy[h,j]*math.cos(theta)
+        
+        def secondrot(vx,vy,theta): #Does the same as first function, just with the input vector components not being arrays
+            return vx*math.cos(theta)-vy*math.sin(theta), vx*math.sin(theta)+vy*math.cos(theta)
+        
+        def coll(h,k,j): #Function that deals with particle collisions
+            #For testing conservation
+        #    initialxmomentum=mass[h]*vx[h,j]+mass[k]*vx[k,j]
+        #    initialymomentum=mass[h]*vy[h,j]+mass[k]*vy[k,j]
+        #    initialmomentum=np.sqrt(initialxmomentum**2+initialymomentum**2)
+        #    maginitialvelh=np.sqrt(vx[h,j]**2+vy[h,j]**2)
+        #    maginitialvelk=np.sqrt(vx[k,j]**2+vy[k,j]**2)
+        #    initialkineticenergy=0.5*mass[h]*maginitialvelh**2+0.5*mass[k]*maginitialvelk**2
+        #    print 'Initial Momentum:',initialmomentum
+        #    print 'Initial Kinetic Energy:',initialkineticenergy
+            theta=math.atan((y[k,j]-y[h,j])/(x[k,j]-x[h,j])) #Angle from x axis to line connecting two particles
+            #Rotation
+            vxhinitialprime=rot(vx,vy,h,j,theta)[0]
+            vyhprime=rot(vx,vy,h,j,theta)[1]
+            vxkinitialprime=rot(vx,vy,k,j,theta)[0]
+            vykprime=rot(vx,vy,k,j,theta)[1]
+            #Velocity calculation
+            vxkprimerel=vxkinitialprime-vxhinitialprime
+            vxhfinalprimerel=(2*mass[k]/(mass[h]+mass[k]))*vxkprimerel
+            vxkfinalprimerel=((mass[k]-mass[h])/(mass[k]+mass[h]))*vxkprimerel
+            vxkfinalprime=vxkfinalprimerel+vxhinitialprime
+            vxhfinalprime=vxhfinalprimerel+vxhinitialprime
+            #Rotation back
+            newvxh=secondrot(vxhfinalprime,vyhprime,-theta)[0]
+            newvyh=secondrot(vxhfinalprime,vyhprime,-theta)[1]
+            newvxk=secondrot(vxkfinalprime,vykprime,-theta)[0]
+            newvyk=secondrot(vxkfinalprime,vykprime,-theta)[1]
+            #For testing conservation
+        #    finalxmomentum=mass[h]*newvxh+mass[k]*newvxk
+        #    finalymomentum=mass[h]*newvyh+mass[k]*newvyk
+        #    finalmomentum=np.sqrt(finalxmomentum**2+finalymomentum**2)
+        #    magfinalvelh=np.sqrt(newvxh**2+newvyh**2)
+        #    magfinalvelk=np.sqrt(newvxk**2+newvyk**2)
+        #    finalkineticenergy=0.5*mass[h]*magfinalvelh**2+0.5*mass[k]*magfinalvelk**2
+        #    print 'Final Momentum:',finalmomentum
+        #    print 'Final Kinetic Energy:',finalkineticenergy
+            #Next position
+            x[h,j+1]=x[h,j]+(newvxh)*division
+            y[h,j+1]=y[h,j]+(newvyh)*division
+            x[k,j+1]=x[k,j]+(newvxk)*division
+            y[k,j+1]=y[k,j]+(newvyk)*division
+            #Applies velocities
+            vx[h,j]=newvxh
+            vx[k,j]=newvxk
+            vy[h,j]=newvyh
+            vy[k,j]=newvyk
+            vx[h,j+1]=newvxh
+            vx[k,j+1]=newvxk
+            vy[h,j+1]=newvyh
+            vy[k,j+1]=newvyk
+        
+        def wallcoll(i,j): #Function that deals with wall collisions
+            #x walls
+            if abs(x[i,j])>=mindist:
+                x[i,j+1]=x[i,j]-vx[i,j]*division
+                vx[i,j+1]=-vx[i,j]
+            else:
+                x[i,j+1]=x[i,j]+vx[i,j]*division
+                vx[i,j+1]=vx[i,j]
+            #y walls
+            if abs(y[i,j])>=mindist:
+                y[i,j+1]=y[i,j]-vy[i,j]*division
+                vy[i,j+1]=-vy[i,j]
+            else:
+                y[i,j+1]=y[i,j]+vy[i,j]*division
+                vy[i,j+1]=vy[i,j]
+        
+        exposure=np.zeros(number*simno).reshape(number,simno) #Array denoting which particles' have been exposed to infection (not quite the same as SEIR right now)
+        
+        def infect(h,k,j): #Function dealing with infection
+            if inf[h,j]==1.0 and inf[k,j]!=1.0:
+                random=np.random.random(1)
+                prob=infectivity[h]*susceptibility[k]
+                if prob>=random:
+                    inf[k,j+1]=1.0
+                    exposure[k,j+1:]=0.0
+                    infpersist(k,j)
+                else:
+                    exposure[k,j+1:]=1.0
+            if inf[h,j]!=1.0 and inf[k,j]==1.0:
+                random=np.random.random(1)
+                prob=infectivity[k]*susceptibility[h]
+                if prob>=random:
+                    inf[h,j+1]=1.0
+                    exposure[h,j+1:]=0.0
+                    infpersist(h,j)
+                else:
+                    exposure[k,j+1]=1.0
+            #Cases wherein neither or both particles are infected needn't be considered because of the persist function
+                
+        averagevel=np.average(speed) #Average of initial speeds
+        worstcasenocoll=int(np.ceil((particlesize/averagevel)/division)) #Worst case number of increments for exclusion
+        nocoll=worstcasenocoll+1 #Number of increments for exclusion
+        collcheck=np.zeros(number*simno).reshape(number,simno) #Array to check for exclusion
+        numberofcollisions=np.zeros(number)
+        
+        def grid(a): #Function that calculates spatial hash
+            return (np.floor(a/cellsize))*width
+        
+        gridx=np.zeros(number)
+        gridy=np.zeros(number)
+        
+        
+        j=0
+        while j<simno:
+            #Grid creation
+            i=0
+            while i<number:
+                gridx[i]=grid(x[i,j])
+                gridy[i]=grid(y[i,j])
+                i=i+1
+            #Wall collisions
+            i=0
+            while i<number and j!=simno-1 and deadcheck[i,j]!=1.0:
+                wallcoll(i,j)
+                i=i+1
+            #Particle collisions
+            h=0
+            while h<number:
+                k=0
+                while k<number:
+                    #Makes sure particle doesn't collide with itself, dead particles don't collide, and collision isn't recalculated
+                    if k!=h and collcheck[k,j]==0.0 and collcheck[h,j]==0.0 and deadcheck[k,j]==0.0 and deadcheck[h,j]==0.0:
+                        if abs(gridx[h]-gridx[k])<=width and abs(gridy[h]-gridy[k])<=width:
+                            if dist(h,k,j)<=2*particlesize and j!=simno-1:
+                                coll(h,k,j)
+                                infect(h,k,j)
+                                #Exclusion (prevents multiple subsequent collisions between the same particles)
+                                d=0
+                                while d<nocoll and j+d!=simno-1:
+                                    collcheck[h,j+d]=1.0
+                                    collcheck[k,j+d]=1.0
+                                    d=d+1
+                                #Tracking number of collisions for each particle
+                                numberofcollisions[h]=numberofcollisions[h]+1
+                                numberofcollisions[k]=numberofcollisions[k]+1
+                    k=k+1
+                h=h+1
+            j=j+1
+        
+        diffinf=np.zeros(number*simno).reshape(simno,number) #Reshaped inf array
+        i=0
+        while i<simno:
+            j=0
+            while j<number:
+                diffinf[i,j]=inf[j,i]
+                j=j+1
+            i=i+1
+        
+        diffexposure=np.zeros(number*simno).reshape(simno,number) #Reshaped exposure array
+        i=0
+        while i<simno:
+            j=0
+            while j<number:
+                diffexposure[i,j]=exposure[j,i]
+                j=j+1
+            i=i+1
+        
+        noexposed=np.zeros(simno) #Array of number of exposed particles at each time increment
+        i=0
+        while i<simno:
+            noexposed[i]=np.count_nonzero(diffexposure[i])
+            i=i+1
+        
+        noinf=np.zeros(simno) #Array of number of infected particles at each time increment
+        i=0
+        while i<simno:
+            noinf[i]=np.count_nonzero(diffinf[i])
+            i=i+1
+        
+        nosusceptible=number-noinf-norecov-nodead #Number of particles susceptible to infection (includes exposed particles)
+        
+        totalnoinf=0
+        totalnoexposed=0
+        i=0
+        while i<number:
+            if np.count_nonzero(inf[i])>0:
+                totalnoinf=totalnoinf+1
+            if np.count_nonzero(exposure[i])>0:
+                totalnoexposed=totalnoexposed+1
+            i=i+1
+        
+#        #Printing stats (Optional)
+#        print 'Number of Dead:',max(nodead)
+#        print 'Total No. Infected:',totalnoinf
+#        print 'Peak Infection:',max(noinf)
+#        print '---------------'
+        
+        #Run Tracking
+        print 'Run:',r,s        
+        
+        nodeadarray[s,r]=max(nodead)
+        totalnoinfarray[s,r]=totalnoinf
+        totalnoexposedarray[s,r]=totalnoexposed
+        peakinfectionarray[s,r]=max(noinf)
+        
+        r=r+1
+    particlesize=particlesize+numstep
+    s=s+1
+
+averagenodead=np.zeros(numnum)
+averagetotalnoinf=np.zeros(numnum)
+averagepeakinfection=np.zeros(numnum)
+averagenoexposed=np.zeros(numnum)
+i=0
+while i<numnum:
+    averagenodead[i]=np.average(nodeadarray[i])
+    averagetotalnoinf[i]=np.average(totalnoinfarray[i])
+    averagepeakinfection[i]=np.average(peakinfectionarray[i])
+    averagenoexposed[i]=np.average(totalnoexposedarray[i])
+    i=i+1
+
+##Plotting
+#plt.plot(time, nosusceptible, label='Susceptible')
+#plt.plot(time, noexposed, label='Exposed')
+#plt.plot(time, noinf, label='Infected')
+#plt.plot(time, norecov, label='Recovered')
+#plt.plot(time, nodead, label='Dead')
+#plt.legend()
+#plt.show()
+
+#Printing runtime
+end_time=datetime.datetime.now()
+runtime=end_time-start_time
+print 'Runtime:',runtime
+
+#Plotting and saving graphs
+#WARNING: SAVED GRAPHS OVERRIDE PREVIOUS ONES!
+plotting=np.zeros(numnum)
+i=0
+while i<numnum:
+    plotting[i]=starter+i*numstep
+    i=i+1
+
+avgpercentdead=(averagenodead/number)*100
+avgpercentexposed=(averagenoexposed/number)*100
+avgpercentinf=(averagetotalnoinf/number)*100
+avgpercentpeakinf=(averagepeakinfection/number)*100
+
+avgexposed=plt.figure()
+plt.plot(plotting,avgpercentexposed)
+plt.xlabel('Particle Size')
+plt.ylabel('Total Percent Exposed (Average)')
+plt.savefig("avgnoexposed.jpg", dpi=200)
+plt.show()
+
+avgdead=plt.figure()
+plt.plot(plotting,avgpercentdead)
+plt.xlabel('Particle Size')
+plt.ylabel('Total Percent Dead (Average)')
+plt.savefig("avgnodead.jpg", dpi=200)
+plt.show()
+
+avgtotalinf=plt.figure()
+plt.plot(plotting,avgpercentinf)
+plt.xlabel('Particle Size')
+plt.ylabel('Total Percent Infected (Average)')
+plt.savefig("avgtotalinf.jpg",dpi=200)
+plt.show()
+
+avgpeakinf=plt.figure()
+plt.plot(plotting,avgpercentpeakinf)
+plt.xlabel('Particle Size')
+plt.ylabel('Percent Peak Infection (Average)')
+plt.savefig("avgpeakinf.jpg",dpi=200)
+plt.show()
